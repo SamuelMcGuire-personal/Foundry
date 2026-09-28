@@ -35,35 +35,35 @@ jobs:
         with:
           node-version: "20"
       - run: npm install
-      - name: Build unpacked Apple Silicon app
+      - name: Build unpacked Apple Silicon canary
         run: npx electron-builder --mac --arm64 --dir --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - name: Apply and verify ad-hoc macOS signature
         run: |
-          codesign --force --deep --sign - --timestamp=none "dist/mac-arm64/Foundry.app"
-          codesign --verify --deep --strict --verbose=2 "dist/mac-arm64/Foundry.app"
-          codesign -dv --verbose=4 "dist/mac-arm64/Foundry.app" 2>&1 | tee dist/codesign-report.txt
-      - name: Create Apple Silicon test ZIP
+          codesign --force --deep --sign - --timestamp=none "dist/mac-arm64/Foundry Canary.app"
+          codesign --verify --deep --strict --verbose=2 "dist/mac-arm64/Foundry Canary.app"
+          codesign -dv --verbose=4 "dist/mac-arm64/Foundry Canary.app" 2>&1 | tee dist/codesign-report.txt
+      - name: Create Apple Silicon canary ZIP
         run: |
           cd dist/mac-arm64
-          /usr/bin/zip -qry --symlinks ../Foundry-1.0.2-arm64-adhoc-signed-verified.zip Foundry.app
+          /usr/bin/zip -qry --symlinks ../Foundry-1.0.4-arm64-canary.zip "Foundry Canary.app"
           cd ../..
-      - name: Verify ZIP integrity and extracted app signature
+      - name: Verify ZIP integrity and extracted canary signature
         run: |
-          /usr/bin/unzip -t "dist/Foundry-1.0.2-arm64-adhoc-signed-verified.zip"
+          /usr/bin/unzip -t "dist/Foundry-1.0.4-arm64-canary.zip"
           rm -rf dist/verify-extract
           mkdir -p dist/verify-extract
-          /usr/bin/unzip -q "dist/Foundry-1.0.2-arm64-adhoc-signed-verified.zip" -d dist/verify-extract
-          test -d "dist/verify-extract/Foundry.app"
-          codesign --verify --deep --strict --verbose=2 "dist/verify-extract/Foundry.app"
-          /usr/bin/file "dist/verify-extract/Foundry.app/Contents/MacOS/Foundry"
-          shasum -a 256 "dist/Foundry-1.0.2-arm64-adhoc-signed-verified.zip" | tee dist/archive-sha256.txt
+          /usr/bin/unzip -q "dist/Foundry-1.0.4-arm64-canary.zip" -d dist/verify-extract
+          test -d "dist/verify-extract/Foundry Canary.app"
+          codesign --verify --deep --strict --verbose=2 "dist/verify-extract/Foundry Canary.app"
+          /usr/bin/file "dist/verify-extract/Foundry Canary.app/Contents/MacOS/Foundry Canary"
+          shasum -a 256 "dist/Foundry-1.0.4-arm64-canary.zip" | tee dist/archive-sha256.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: Foundry-mac-arm64-verified-zip
+          name: Foundry-mac-arm64-canary
           path: |
-            dist/Foundry-1.0.2-arm64-adhoc-signed-verified.zip
+            dist/Foundry-1.0.4-arm64-canary.zip
             dist/archive-sha256.txt
             dist/codesign-report.txt
 
