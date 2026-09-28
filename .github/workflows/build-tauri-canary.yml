@@ -1,0 +1,57 @@
+name: Build Foundry Tauri Canary
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src-tauri/**"
+      - "tauri-canary/**"
+      - ".github/workflows/build-tauri-canary.yml"
+
+jobs:
+  mac-arm64-tauri-canary:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use current stable Rust
+        run: |
+          rustup update stable
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Install Tauri 2.12 CLI
+        run: cargo install tauri-cli --version 2.12.0 --locked
+
+      - name: Build Apple Silicon Tauri DMG
+        working-directory: src-tauri
+        run: cargo tauri build --bundles dmg
+
+      - name: Verify built application signature
+        run: |
+          APP_PATH=$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name "*.app" -print -quit)
+          test -n "$APP_PATH"
+          echo "App: $APP_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          codesign -dv --verbose=4 "$APP_PATH" 2>&1 | tee tauri-codesign-report.txt
+          /usr/bin/file "$APP_PATH/Contents/MacOS/"* | tee tauri-binary-report.txt
+
+      - name: Verify DMG exists
+        run: |
+          DMG_PATH=$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -name "*.dmg" -print -quit)
+          test -n "$DMG_PATH"
+          echo "DMG: $DMG_PATH"
+          shasum -a 256 "$DMG_PATH" | tee tauri-dmg-sha256.txt
+          ls -lh "$DMG_PATH"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Foundry-Tauri-Canary-mac-arm64
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            tauri-codesign-report.txt
+            tauri-binary-report.txt
+            tauri-dmg-sha256.txt
+          compression-level: 0
