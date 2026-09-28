@@ -1,9 +1,9 @@
 {
   "name": "foundry-desktop-pilot",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Foundry proper desktop shell pilot",
-  "main": "app/main.cjs",
+  "main": "app/canary.cjs",
   "scripts": {
     "start": "electron .",
     "dist:mac:x64": "electron-builder --mac zip dmg --x64",
@@ -15,8 +15,8 @@
     "electron-builder": "25.1.8"
   },
   "build": {
-    "appId": "nz.foundry.desktop",
-    "productName": "Foundry",
+    "appId": "nz.foundry.desktop.canary",
+    "productName": "Foundry Canary",
     "asar": true,
     "files": ["app/**/*"],
     "directories": {"output": "dist"},
@@ -26,7 +26,7 @@
       "minimumSystemVersion": "13.0.0",
       "identity": "-"
     },
-    "dmg": {"title": "Foundry ${version}"},
+    "dmg": {"title": "Foundry Canary ${version}"},
     "win": {"target": ["nsis","zip"]},
     "nsis": {"oneClick": false, "allowToChangeInstallationDirectory": true}
   }
