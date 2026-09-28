@@ -1,6 +1,10 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,clipboard}=require('electron');
-const fs=require('fs'),fsp=fs.promises,path=require('path'),crypto=require('crypto');
+const fs=require('fs'),fsp=fs.promises,path=require('path'),crypto=require('crypto'),os=require('os');
+const BUILD='1.0.1-diagnostic.1';
 let win;
+const bootLog=[];
+const mark=stage=>bootLog.push({stage,at:new Date().toISOString()});
+mark('main-process-started');
 const settingsFile=()=>path.join(app.getPath('userData'),'foundry-settings.json');
 async function readJson(f,d){try{return JSON.parse(await fsp.readFile(f,'utf8'))}catch{return d}}
 async function writeJson(f,v){await fsp.mkdir(path.dirname(f),{recursive:true});const t=f+'.tmp';await fsp.writeFile(t,JSON.stringify(v,null,2));await fsp.rename(t,f)}
@@ -23,8 +27,10 @@ async function restoreSnapshot(h,id,sid){const l=await lib(h),p=l.projects.find(
 async function backup(h){const f=path.join(h,'backups',`Foundry_Library_${new Date().toISOString().replace(/[:.]/g,'-')}.json`);await writeJson(f,{format:'FoundryDesktop1Backup',createdAt:new Date().toISOString(),library:await lib(h)});return f}
 function trusted(e){if(!win||e.sender!==win.webContents||e.senderFrame!==win.webContents.mainFrame)throw Error('Untrusted IPC sender.')}
 function handle(n,fn){ipcMain.handle(n,async(e,...a)=>{trusted(e);return fn(...a)})}
-app.whenReady().then(()=>{win=new BrowserWindow({width:1450,height:920,minWidth:980,minHeight:680,backgroundColor:'#f4f1e8',webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});win.removeMenu();win.loadFile(path.join(__dirname,'index.html'));win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(e,u)=>{if(!u.startsWith('file:'))e.preventDefault()})});
+app.whenReady().then(async()=>{mark('electron-ready');win=new BrowserWindow({width:1120,height:780,minWidth:840,minHeight:620,backgroundColor:'#f4f1e8',show:false,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});mark('window-created');win.removeMenu();win.webContents.setWindowOpenHandler(()=>({action:'deny'}));win.webContents.on('will-navigate',(e,u)=>{if(!u.startsWith('file:'))e.preventDefault()});win.webContents.on('render-process-gone',(_e,d)=>mark(`renderer-gone:${d.reason}`));win.webContents.on('unresponsive',()=>mark('renderer-unresponsive'));win.webContents.on('responsive',()=>mark('renderer-responsive'));await win.loadFile(path.join(__dirname,'diagnostic.html'));mark('diagnostic-ui-loaded');win.show();mark('window-shown')}).catch(err=>{mark(`boot-error:${err.message}`);console.error(err)});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit()});
+handle('diagnostic:status',async()=>({build:BUILD,electron:process.versions.electron,chrome:process.versions.chrome,node:process.versions.node,platform:process.platform,arch:process.arch,osRelease:os.release(),userData:app.getPath('userData'),settingsPath:settingsFile(),home:await home(),stages:[...bootLog]}));
+handle('diagnostic:launchFull',async()=>{mark('full-ui-launch-requested');await win.loadFile(path.join(__dirname,'index.html'));mark('full-ui-loaded');return true});
 handle('settings:get',getSettings);handle('settings:set',setSettings);
 handle('home:choose',async()=>{const r=await dialog.showOpenDialog(win,{title:'Choose Foundry Home',properties:['openDirectory','createDirectory']});if(r.canceled)return null;const h=await ensureHome(r.filePaths[0]);await setSettings({home:h});return h});
 handle('home:open',async()=>{const h=await home();if(h)await shell.openPath(h);return h});handle('home:info',async()=>{const h=await home();return h?{home:h,library:await lib(h)}:{home:null,library:null}});handle('home:scan',async()=>scan(await home()));
