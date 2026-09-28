@@ -9,6 +9,9 @@ on:
       - "tauri-canary/**"
       - ".github/workflows/build-tauri-canary.yml"
 
+permissions:
+  contents: write
+
 jobs:
   mac-arm64-tauri-canary:
     runs-on: macos-15
@@ -98,3 +101,20 @@ jobs:
             tauri-binary-report.txt
             tauri-dmg-sha256.txt
           compression-level: 0
+
+      - name: Publish durable GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="foundry-tauri-canary-v0.1.0"
+          TITLE="Foundry Tauri Canary v0.1.0"
+          DMG="dist-tauri/Foundry-Tauri-Canary-arm64.dmg"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$DMG" tauri-dmg-sha256.txt --clobber
+          else
+            gh release create "$TAG" "$DMG" tauri-dmg-sha256.txt \
+              --title "$TITLE" \
+              --notes "Apple Silicon Tauri canary build for Foundry. Ad-hoc signed test build; not notarized." \
+              --prerelease
+          fi
