@@ -27,6 +27,7 @@
   "bundle": {
     "active": true,
     "targets": ["app"],
+    "icon": [],
     "category": "DeveloperTool",
     "macOS": {
       "minimumSystemVersion": "13.0",
