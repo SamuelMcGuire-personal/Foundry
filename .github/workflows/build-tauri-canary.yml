@@ -23,7 +23,7 @@ jobs:
 
       - name: Build Tauri canary directly with Cargo
         working-directory: src-tauri
-        run: cargo build --release --locked
+        run: cargo build --release
 
       - name: Assemble native macOS app bundle
         run: |
