@@ -1,6 +1,6 @@
 {
   "name": "foundry-desktop-pilot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Foundry proper desktop shell pilot",
   "main": "app/main.cjs",
@@ -24,7 +24,7 @@
       "category": "public.app-category.developer-tools",
       "target": [{"target":"zip","arch":["x64","arm64"]},{"target":"dmg","arch":["x64","arm64"]}],
       "minimumSystemVersion": "10.15.0",
-      "identity": null
+      "identity": "-"
     },
     "dmg": {"title": "Foundry ${version}"},
     "win": {"target": ["nsis","zip"]},
