@@ -23,7 +23,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Foundry-mac-x64
-          path: dist/*
+          path: |
+            dist/*.zip
+            dist/*.dmg
 
   mac-arm64:
     runs-on: macos-15
@@ -40,7 +42,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Foundry-mac-arm64
-          path: dist/*
+          path: |
+            dist/*.zip
+            dist/*.dmg
 
   windows:
     runs-on: windows-latest
@@ -54,4 +58,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Foundry-Windows-x64
-          path: dist/*
+          path: |
+            dist/*.exe
+            dist/*.zip
