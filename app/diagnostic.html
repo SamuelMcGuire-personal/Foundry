@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Foundry Startup Check</title>
+<style>
+:root{color-scheme:light dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{margin:0;background:#f4f1e8;color:#20242b}.wrap{max-width:900px;margin:0 auto;padding:36px}.card{background:white;border:1px solid #d8d3c8;border-radius:18px;padding:22px;margin:14px 0;box-shadow:0 8px 30px rgba(0,0,0,.06)}h1{margin:0 0 8px;font-size:30px}h2{margin:0 0 12px;font-size:18px}.muted{color:#667085}.ok{color:#18794e;font-weight:700}.warn{color:#a15c00;font-weight:700}.row{display:grid;grid-template-columns:180px 1fr;gap:10px;padding:7px 0;border-bottom:1px solid #eee}.row:last-child{border-bottom:0}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all}button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 18px;background:#263b66;color:white;cursor:pointer}button:disabled{opacity:.55;cursor:default}.pulse{display:inline-block;width:10px;height:10px;border-radius:50%;background:#22a06b;margin-right:8px}.small{font-size:13px}.log{max-height:220px;overflow:auto;background:#f8f7f3;border-radius:12px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap}@media(prefers-color-scheme:dark){body{background:#1e2024;color:#eee}.card{background:#292c31;border-color:#3c4047}.muted{color:#abb2bf}.row{border-color:#3a3d43}.log{background:#202226}button{background:#6f8bc7}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div><span class="pulse"></span><span id="heartbeat" class="ok">Renderer heartbeat starting…</span></div>
+    <h1>Foundry Startup Check</h1>
+    <p class="muted">Diagnostic build 1.0.1-diagnostic.1. This screen deliberately loads before the full Foundry workspace.</p>
+  </div>
+  <div class="card">
+    <h2>Runtime</h2>
+    <div id="runtime"><span class="warn">Reading runtime information…</span></div>
+  </div>
+  <div class="card">
+    <h2>Startup stages</h2>
+    <div id="stages" class="log">Waiting for main process…</div>
+  </div>
+  <div class="card">
+    <h2>Continue test</h2>
+    <p class="muted">If this window remains responsive, Electron itself has started correctly. Press the button to load the full Foundry interface.</p>
+    <button id="launch" disabled>Launch full Foundry</button>
+    <p id="result" class="small muted"></p>
+  </div>
+</div>
+<script>
+let ticks=0;setInterval(()=>{ticks++;document.getElementById('heartbeat').textContent=`Renderer responsive — ${ticks}s`;},1000);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function init(){
+  try{
+    const s=await window.foundry.diagnosticStatus();
+    const rows=[['Build',s.build],['Electron',s.electron],['Chromium',s.chrome],['Node',s.node],['Platform',`${s.platform} / ${s.arch}`],['OS release',s.osRelease],['User data',s.userData],['Settings',s.settingsPath],['Foundry Home',s.home||'Not chosen yet']];
+    document.getElementById('runtime').innerHTML=rows.map(([a,b])=>`<div class="row"><strong>${esc(a)}</strong><code>${esc(b)}</code></div>`).join('');
+    document.getElementById('stages').textContent=(s.stages||[]).map(x=>`${x.at}  ${x.stage}`).join('\n')||'No stages recorded.';
+    document.getElementById('launch').disabled=false;
+  }catch(err){document.getElementById('runtime').innerHTML=`<span class="warn">Diagnostic IPC failed: ${esc(err.message||err)}</span>`;document.getElementById('stages').textContent='Preload/main-process bridge did not respond.';}
+}
+document.getElementById('launch').addEventListener('click',async()=>{const b=document.getElementById('launch');b.disabled=true;document.getElementById('result').textContent='Loading full Foundry interface…';try{await window.foundry.launchFullFoundry()}catch(err){document.getElementById('result').textContent='Full UI launch failed: '+(err.message||err);b.disabled=false;}});
+init();
+</script>
+</body>
+</html>
