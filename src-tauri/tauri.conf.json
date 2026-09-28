@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Foundry Tauri Canary",
+  "version": "0.1.0",
+  "identifier": "nz.foundry.tauri.canary",
+  "build": {
+    "frontendDist": "../tauri-canary"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Foundry Tauri Canary",
+        "width": 900,
+        "height": 640,
+        "minWidth": 720,
+        "minHeight": 520,
+        "center": true,
+        "visible": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "category": "DeveloperTool",
+    "macOS": {
+      "minimumSystemVersion": "13.0",
+      "signingIdentity": "-"
+    }
+  }
+}
