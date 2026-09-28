@@ -204,8 +204,8 @@ jobs:
         run: |
           set -euo pipefail
           TAG="shell-truth-test-arm64-v1"
-          ELECTRON="release/electron/Foundry-Electron-Canary-arm64.dmg"
-          TAURI="release/tauri/Foundry-Tauri-Canary-arm64.dmg"
+          ELECTRON="release/electron/truth-electron/Foundry-Electron-Canary-arm64.dmg"
+          TAURI="release/tauri/truth-tauri/Foundry-Tauri-Canary-arm64.dmg"
           MANIFEST="release/SHELL-TRUTH-TEST.txt"
 
           if gh release view "$TAG" >/dev/null 2>&1; then
