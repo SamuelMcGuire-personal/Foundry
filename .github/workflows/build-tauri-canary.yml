@@ -17,40 +17,76 @@ jobs:
 
       - name: Use current stable Rust
         run: |
-          rustup update stable
           rustup default stable
           rustc --version
           cargo --version
 
-      - name: Install Tauri 2.12 CLI
-        run: cargo install tauri-cli --version 2.12.0 --locked
-
-      - name: Build Apple Silicon Tauri DMG
+      - name: Build Tauri canary directly with Cargo
         working-directory: src-tauri
-        run: cargo tauri build --bundles dmg
+        run: cargo build --release --locked
 
-      - name: Verify built application signature
+      - name: Assemble native macOS app bundle
         run: |
-          APP_PATH=$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name "*.app" -print -quit)
-          test -n "$APP_PATH"
-          echo "App: $APP_PATH"
-          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-          codesign -dv --verbose=4 "$APP_PATH" 2>&1 | tee tauri-codesign-report.txt
-          /usr/bin/file "$APP_PATH/Contents/MacOS/"* | tee tauri-binary-report.txt
+          set -euo pipefail
+          APP="dist-tauri/Foundry Tauri Canary.app"
+          CONTENTS="$APP/Contents"
+          MACOS="$CONTENTS/MacOS"
+          RESOURCES="$CONTENTS/Resources"
+          mkdir -p "$MACOS" "$RESOURCES"
+          cp src-tauri/target/release/foundry-tauri-canary "$MACOS/Foundry Tauri Canary"
+          chmod +x "$MACOS/Foundry Tauri Canary"
+          cat > "$CONTENTS/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key><string>en</string>
+            <key>CFBundleDisplayName</key><string>Foundry Tauri Canary</string>
+            <key>CFBundleExecutable</key><string>Foundry Tauri Canary</string>
+            <key>CFBundleIdentifier</key><string>nz.foundry.tauri.canary</string>
+            <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+            <key>CFBundleName</key><string>Foundry Tauri Canary</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>0.1.0</string>
+            <key>CFBundleVersion</key><string>1</string>
+            <key>LSMinimumSystemVersion</key><string>13.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          /usr/bin/plutil -lint "$CONTENTS/Info.plist"
+          /usr/bin/file "$MACOS/Foundry Tauri Canary" | tee tauri-binary-report.txt
+          /usr/bin/lipo -archs "$MACOS/Foundry Tauri Canary" | tee -a tauri-binary-report.txt
 
-      - name: Verify DMG exists
+      - name: Ad-hoc sign and verify app
         run: |
-          DMG_PATH=$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -name "*.dmg" -print -quit)
-          test -n "$DMG_PATH"
-          echo "DMG: $DMG_PATH"
-          shasum -a 256 "$DMG_PATH" | tee tauri-dmg-sha256.txt
-          ls -lh "$DMG_PATH"
+          set -euo pipefail
+          APP="dist-tauri/Foundry Tauri Canary.app"
+          /usr/bin/codesign --force --deep --sign - --timestamp=none "$APP"
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
+          /usr/bin/codesign -dv --verbose=4 "$APP" 2>&1 | tee tauri-codesign-report.txt
+
+      - name: Create and verify DMG
+        run: |
+          set -euo pipefail
+          mkdir -p dist-tauri/dmg-root
+          cp -R "dist-tauri/Foundry Tauri Canary.app" dist-tauri/dmg-root/
+          ln -s /Applications dist-tauri/dmg-root/Applications
+          /usr/bin/hdiutil create \
+            -volname "Foundry Tauri Canary" \
+            -srcfolder dist-tauri/dmg-root \
+            -ov \
+            -format UDZO \
+            "dist-tauri/Foundry-Tauri-Canary-arm64.dmg"
+          /usr/bin/hdiutil verify "dist-tauri/Foundry-Tauri-Canary-arm64.dmg"
+          shasum -a 256 "dist-tauri/Foundry-Tauri-Canary-arm64.dmg" | tee tauri-dmg-sha256.txt
+          ls -lh "dist-tauri/Foundry-Tauri-Canary-arm64.dmg"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Foundry-Tauri-Canary-mac-arm64
+          name: Foundry-Tauri-Canary-mac-arm64-cargo
           path: |
-            src-tauri/target/release/bundle/dmg/*.dmg
+            dist-tauri/Foundry-Tauri-Canary-arm64.dmg
             tauri-codesign-report.txt
             tauri-binary-report.txt
             tauri-dmg-sha256.txt
