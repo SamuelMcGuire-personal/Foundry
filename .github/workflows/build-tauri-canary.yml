@@ -21,11 +21,12 @@ jobs:
           rustc --version
           cargo --version
 
-      - name: Generate placeholder Tauri icon
+      - name: Generate RGBA placeholder Tauri icon
         run: |
           mkdir -p src-tauri/icons
-          printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZC7sAAAAASUVORK5CYII=' | base64 --decode > src-tauri/icons/icon.png
+          printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/7m0JAAAAAElFTkSuQmCC' | base64 --decode > src-tauri/icons/icon.png
           /usr/bin/file src-tauri/icons/icon.png
+          /usr/bin/sips -g pixelWidth -g pixelHeight -g space src-tauri/icons/icon.png
 
       - name: Build Tauri canary directly with Cargo
         working-directory: src-tauri
