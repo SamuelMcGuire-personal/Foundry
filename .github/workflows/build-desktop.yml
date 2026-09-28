@@ -35,16 +35,21 @@ jobs:
         with:
           node-version: "20"
       - run: npm install
-      - name: Build macOS Apple Silicon package
-        run: npx electron-builder --mac zip dmg --arm64 --publish never
+      - name: Build unpacked Apple Silicon app
+        run: npx electron-builder --mac --arm64 --dir --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - name: Apply and verify ad-hoc macOS signature
+        run: |
+          codesign --force --deep --sign - --timestamp=none "dist/mac-arm64/Foundry.app"
+          codesign --verify --deep --strict --verbose=2 "dist/mac-arm64/Foundry.app"
+          codesign -dv --verbose=4 "dist/mac-arm64/Foundry.app" 2>&1 | tee dist/codesign-report.txt
+      - name: Create Apple Silicon test ZIP
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/mac-arm64/Foundry.app" "dist/Foundry-1.0.2-arm64-adhoc-signed.zip"
       - uses: actions/upload-artifact@v4
         with:
-          name: Foundry-mac-arm64
-          path: |
-            dist/*.zip
-            dist/*.dmg
+          name: Foundry-mac-arm64-adhoc-signed
+          path: dist/Foundry-1.0.2-arm64-adhoc-signed.zip
 
   windows:
     runs-on: windows-latest
