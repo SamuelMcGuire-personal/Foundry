@@ -1,0 +1,219 @@
+name: Foundry Shell Truth Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/canary.cjs"
+      - "package.json"
+      - "src-tauri/**"
+      - "tauri-canary/**"
+      - ".github/workflows/shell-truth-test.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  electron-arm64:
+    name: Electron ARM64 DMG
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Electron dependencies
+        run: npm install
+
+      - name: Build unpacked Electron canary
+        run: npx electron-builder --mac --arm64 --dir --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Verify Electron architecture before signing
+        run: |
+          set -euo pipefail
+          APP="dist/mac-arm64/Foundry Canary.app"
+          BIN="$APP/Contents/MacOS/Foundry Canary"
+          test -d "$APP"
+          /usr/bin/file "$BIN" | tee electron-binary-report.txt
+          /usr/bin/lipo -archs "$BIN" | tee -a electron-binary-report.txt
+
+      - name: Ad-hoc sign and verify Electron app
+        run: |
+          set -euo pipefail
+          APP="dist/mac-arm64/Foundry Canary.app"
+          /usr/bin/codesign --force --deep --sign - --timestamp=none "$APP"
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
+          /usr/bin/codesign -dv --verbose=4 "$APP" 2>&1 | tee electron-codesign-report.txt
+
+      - name: Create and verify Electron DMG
+        run: |
+          set -euo pipefail
+          rm -rf truth-electron
+          mkdir -p truth-electron/dmg-root
+          cp -R "dist/mac-arm64/Foundry Canary.app" truth-electron/dmg-root/
+          ln -s /Applications truth-electron/dmg-root/Applications
+          /usr/bin/hdiutil create \
+            -volname "Foundry Electron Canary" \
+            -srcfolder truth-electron/dmg-root \
+            -ov \
+            -format UDZO \
+            "truth-electron/Foundry-Electron-Canary-arm64.dmg"
+          /usr/bin/hdiutil verify "truth-electron/Foundry-Electron-Canary-arm64.dmg"
+          shasum -a 256 "truth-electron/Foundry-Electron-Canary-arm64.dmg" | tee electron-dmg-sha256.txt
+          ls -lh "truth-electron/Foundry-Electron-Canary-arm64.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shell-truth-electron-arm64
+          path: |
+            truth-electron/Foundry-Electron-Canary-arm64.dmg
+            electron-binary-report.txt
+            electron-codesign-report.txt
+            electron-dmg-sha256.txt
+          compression-level: 0
+
+  tauri-arm64:
+    name: Tauri ARM64 DMG
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use current stable Rust
+        run: |
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Generate RGBA placeholder Tauri icon
+        run: |
+          mkdir -p src-tauri/icons
+          printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/7m0JAAAAAElFTkSuQmCC' | base64 --decode > src-tauri/icons/icon.png
+          /usr/bin/file src-tauri/icons/icon.png
+
+      - name: Build Tauri canary directly with Cargo
+        working-directory: src-tauri
+        run: cargo build --release
+
+      - name: Assemble Tauri app bundle
+        run: |
+          set -euo pipefail
+          APP="truth-tauri/Foundry Tauri Canary.app"
+          CONTENTS="$APP/Contents"
+          MACOS="$CONTENTS/MacOS"
+          RESOURCES="$CONTENTS/Resources"
+          mkdir -p "$MACOS" "$RESOURCES"
+          cp src-tauri/target/release/foundry-tauri-canary "$MACOS/Foundry Tauri Canary"
+          chmod +x "$MACOS/Foundry Tauri Canary"
+          cat > "$CONTENTS/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key><string>en</string>
+            <key>CFBundleDisplayName</key><string>Foundry Tauri Canary</string>
+            <key>CFBundleExecutable</key><string>Foundry Tauri Canary</string>
+            <key>CFBundleIdentifier</key><string>nz.foundry.tauri.canary</string>
+            <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+            <key>CFBundleName</key><string>Foundry Tauri Canary</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>0.1.0</string>
+            <key>CFBundleVersion</key><string>1</string>
+            <key>LSMinimumSystemVersion</key><string>13.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          /usr/bin/plutil -lint "$CONTENTS/Info.plist"
+          /usr/bin/file "$MACOS/Foundry Tauri Canary" | tee tauri-binary-report.txt
+          /usr/bin/lipo -archs "$MACOS/Foundry Tauri Canary" | tee -a tauri-binary-report.txt
+
+      - name: Ad-hoc sign and verify Tauri app
+        run: |
+          set -euo pipefail
+          APP="truth-tauri/Foundry Tauri Canary.app"
+          /usr/bin/codesign --force --deep --sign - --timestamp=none "$APP"
+          /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"
+          /usr/bin/codesign -dv --verbose=4 "$APP" 2>&1 | tee tauri-codesign-report.txt
+
+      - name: Create and verify Tauri DMG
+        run: |
+          set -euo pipefail
+          mkdir -p truth-tauri/dmg-root
+          cp -R "truth-tauri/Foundry Tauri Canary.app" truth-tauri/dmg-root/
+          ln -s /Applications truth-tauri/dmg-root/Applications
+          /usr/bin/hdiutil create \
+            -volname "Foundry Tauri Canary" \
+            -srcfolder truth-tauri/dmg-root \
+            -ov \
+            -format UDZO \
+            "truth-tauri/Foundry-Tauri-Canary-arm64.dmg"
+          /usr/bin/hdiutil verify "truth-tauri/Foundry-Tauri-Canary-arm64.dmg"
+          shasum -a 256 "truth-tauri/Foundry-Tauri-Canary-arm64.dmg" | tee tauri-dmg-sha256.txt
+          ls -lh "truth-tauri/Foundry-Tauri-Canary-arm64.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shell-truth-tauri-arm64
+          path: |
+            truth-tauri/Foundry-Tauri-Canary-arm64.dmg
+            tauri-binary-report.txt
+            tauri-codesign-report.txt
+            tauri-dmg-sha256.txt
+          compression-level: 0
+
+  publish:
+    name: Publish shell truth-test release
+    needs: [electron-arm64, tauri-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: shell-truth-electron-arm64
+          path: release/electron
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: shell-truth-tauri-arm64
+          path: release/tauri
+
+      - name: Build comparison manifest
+        run: |
+          set -euo pipefail
+          {
+            echo "Foundry Shell Truth Test"
+            echo "Commit: $GITHUB_SHA"
+            echo "Run: $GITHUB_RUN_ID"
+            echo
+            echo "Electron:"
+            cat release/electron/electron-dmg-sha256.txt
+            echo
+            echo "Tauri:"
+            cat release/tauri/tauri-dmg-sha256.txt
+          } | tee release/SHELL-TRUTH-TEST.txt
+
+      - name: Publish permanent GitHub prerelease assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="shell-truth-test-arm64-v1"
+          ELECTRON="release/electron/Foundry-Electron-Canary-arm64.dmg"
+          TAURI="release/tauri/Foundry-Tauri-Canary-arm64.dmg"
+          MANIFEST="release/SHELL-TRUTH-TEST.txt"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ELECTRON" "$TAURI" "$MANIFEST" --clobber
+          else
+            gh release create "$TAG" "$ELECTRON" "$TAURI" "$MANIFEST" \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "Foundry Shell Truth Test — Apple Silicon" \
+              --notes "Controlled shell comparison. Electron and Tauri are both minimal Apple Silicon canaries, ad-hoc signed, codesign verified, packaged as DMGs with hdiutil, and distributed from the same GitHub Release. This is a diagnostic prerelease, not a production-signed/notarized build."
+          fi
