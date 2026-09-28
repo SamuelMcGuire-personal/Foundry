@@ -1,6 +1,6 @@
 {
   "name": "foundry-desktop-pilot",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Foundry proper desktop shell pilot",
   "main": "app/main.cjs",
@@ -11,7 +11,7 @@
     "dist:win": "electron-builder --win nsis zip --x64"
   },
   "devDependencies": {
-    "electron": "32.3.3",
+    "electron": "44.4.5",
     "electron-builder": "25.1.8"
   },
   "build": {
@@ -23,7 +23,7 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [{"target":"zip","arch":["x64","arm64"]},{"target":"dmg","arch":["x64","arm64"]}],
-      "minimumSystemVersion": "10.15.0",
+      "minimumSystemVersion": "13.0.0",
       "identity": "-"
     },
     "dmg": {"title": "Foundry ${version}"},
