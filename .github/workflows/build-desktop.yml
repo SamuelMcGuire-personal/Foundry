@@ -6,26 +6,42 @@ on:
       - main
     tags:
       - "desktop-v*"
+
 jobs:
-  mac:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        arch: [x64, arm64]
+  mac-intel:
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
       - run: npm install
-      - name: Build macOS package
-        run: npx electron-builder --mac zip dmg --${{ matrix.arch }} --publish never
+      - name: Build macOS Intel package
+        run: npx electron-builder --mac zip dmg --x64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - uses: actions/upload-artifact@v4
         with:
-          name: Foundry-mac-${{ matrix.arch }}
+          name: Foundry-mac-x64
           path: dist/*
+
+  mac-arm64:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - name: Build macOS Apple Silicon package
+        run: npx electron-builder --mac zip dmg --arm64 --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Foundry-mac-arm64
+          path: dist/*
+
   windows:
     runs-on: windows-latest
     steps:
