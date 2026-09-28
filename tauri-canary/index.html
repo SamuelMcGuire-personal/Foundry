@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Foundry Tauri Canary</title>
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f5f1e8}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px}
+    main{width:min(760px,100%);background:#fff;border:1px solid #d8d3c8;border-radius:24px;padding:36px;box-shadow:0 18px 55px rgba(28,34,48,.12)}
+    .eyebrow{font-size:.78rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#667085}
+    h1{font-size:2.2rem;margin:.35rem 0 .7rem}p{font-size:1.05rem;line-height:1.65;color:#475467}
+    .ok{margin-top:24px;padding:18px;border-radius:16px;background:#eef8f0;border:1px solid #b8dfc0;color:#175c2d;font-weight:750}
+    .meta{margin-top:22px;padding-top:18px;border-top:1px solid #ece8df;font-size:.9rem;color:#667085}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Foundry shell test</div>
+    <h1>Tauri canary is running.</h1>
+    <p>This build contains no Foundry project logic, no Electron runtime, no preload bridge and no filesystem features. It only tests whether a Tauri 2 desktop shell can launch normally on this Mac.</p>
+    <div class="ok">If you can see this window, the Tauri desktop path works.</div>
+    <div class="meta">Foundry Tauri Canary · v0.1.0 · Apple Silicon test</div>
+  </main>
+</body>
+</html>
