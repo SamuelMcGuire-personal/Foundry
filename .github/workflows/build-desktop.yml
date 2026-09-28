@@ -8,7 +8,7 @@ on:
       - "desktop-v*"
 jobs:
   mac:
-    runs-on: macos-13
+    runs-on: macos-latest
     strategy:
       matrix:
         arch: [x64, arm64]
